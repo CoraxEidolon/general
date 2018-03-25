@@ -18,10 +18,13 @@ namespace WindowsFormsApplication2
         /* Глобальные переменные ********************************************************************/
         SerialPort SerialPort;//серийный порт
         bool SerialPortOpen = false; //Отвечает открыт или закрыт серийный порт
-        bool wayBuilt = false; //Отвечат за построен ли маршрут или нет
         bool installRobot = false; // Установлен ли робот
         bool setFinish = false; //Установлен ли финиш
         bool editMap = false; //Включен режим редактирование -true создание новой таблицы-false
+        bool wayBuilt = false; //Отвечат за построен ли маршрут или нет
+
+        List<int> robotRoute = new List<int>(); // готовый маршрут робота. Глобальный, чтобы иметь к нему доступ из любого метода
+
         /* Подключение к БД */
         string databaseWay = Environment.CurrentDirectory + "\\DatabaseMap.mdb";
         string connectionString = @"provider=Microsoft.Jet.OLEDB.4.0; data source=" + Environment.CurrentDirectory + "\\DatabaseMap.mdb";
@@ -422,17 +425,27 @@ namespace WindowsFormsApplication2
                     }
                 }
 
-                const int infinity = 999999999;// Бесконечность
-                int currentVertex; // текущая вершина
-                                   // Будем искать путь из вершины s в вершину g
-                bool[] visit = new bool[matrixSize]; //посещенные вершины
-                int[] vertexLabels = new int[matrixSize]; //Мектки вершин
-                int[] way = new int[matrixSize]; // запоминает последнюю вершину для нахождения пути назад
-                int[] vertex = new int[matrixSize];//хранит соседние вершиеы
-            
 
-                /* метка всех вершин бесконечность */
-                for (int i = 0; i < matrixSize; i++)
+            const int infinity = 999999999;// Бесконечность
+            int currentVertex; // текущая вершина
+                                            // Будем искать путь из вершины s в вершину g
+            bool[] visit = new bool[matrixSize]; //посещенные вершины
+            int[] vertexLabels = new int[matrixSize]; //Мектки вершин
+            int[] way = new int[matrixSize]; // запоминает последнюю вершину для нахождения пути назад
+            int[] vertex = new int[matrixSize];//хранит соседние вершиеы
+            List<int> routeOfMovement_x = new List<int>(); //Маршрут движения будет хранить конечный маршрут
+            List<int> routeOfMovement_y = new List<int>(); //Маршрут движения будет хранить конечный маршрут
+                                                           /*
+                                                            * Введем следеющее обозначения:
+                                                            * 2- движение прямо ^
+                                                            * 4-поворот налево <=
+                                                            * 6-поворот направо =>
+                                                            */
+
+
+
+            /* метка всех вершин бесконечность */
+            for (int i = 0; i < matrixSize; i++)
                 {
                     vertexLabels[i] = infinity;
                     vertex[i] = infinity;
@@ -470,32 +483,18 @@ namespace WindowsFormsApplication2
                     }
                     if (currentVertex == finish) // Найден кратчайший путь,
                     {        // выводим его
-                        int u = finish;
-
-                        int a = 0;// для заполнения массива маршрута пути
-                        List<int> routeOfMovement_x = new List<int>(); //Маршрут движения будет хранить конечный маршрут
-                        List<int> routeOfMovement_y = new List<int>(); //Маршрут движения будет хранить конечный маршрут
-                    /*
-                     * Введем следеющее обозначения:
-                     * 2- движение прямо ^
-                     * 4-поворот налево <=
-                     * 6-поворот направо =>
-                     */
+                        int u = finish;                       
                     while (u != start)
                     {
                         dataGridView1.Rows[vertexMatrix[u, 0]].Cells[vertexMatrix[u, 1]].Style.BackColor = Color.Gold;
-                        routeOfMovement_x.Add(vertexMatrix[u, 0]);
-                        routeOfMovement_y.Add(vertexMatrix[u, 1]);
+                        routeOfMovement_y.Add(vertexMatrix[u, 0]);
+                        routeOfMovement_x.Add(vertexMatrix[u, 1]);
                         u = way[u];
                     }
                     break;
                 }
                     visit[currentVertex] = true;
                 }/// while 
-
-
-
-
 
 
             if (initialPositionRobot == 2) { dataGridView1.Rows[vertexMatrix[start, 0]].Cells[vertexMatrix[start, 1]].Value = "▲"; dataGridView1.Rows[vertexMatrix[start, 0]].Cells[vertexMatrix[start, 1]].Style.BackColor = Color.GreenYellow; }
@@ -505,6 +504,49 @@ namespace WindowsFormsApplication2
 
             dataGridView1.Rows[vertexMatrix[finish, 0]].Cells[vertexMatrix[finish, 1]].Value = "f";
             dataGridView1.Rows[vertexMatrix[finish, 0]].Cells[vertexMatrix[finish, 1]].Style.BackColor = Color.Gold;
+
+
+            int current_X = 1;
+            int current_Y = 3;
+            int currentPosition = 4;
+            for (int i= routeOfMovement_x.Count-1; i >=0 ; i--)
+            {
+
+                if (currentPosition == 2)
+                {
+                    if (current_X + 1 == routeOfMovement_x[i]) { robotRoute.Add(6); currentPosition = 6; current_X++; continue;  }
+                    if (current_X - 1 == routeOfMovement_x[i]) { robotRoute.Add(4); currentPosition = 4; current_X--; continue; }
+                    if (current_Y + 1 == routeOfMovement_y[i]) { robotRoute.Add(0); currentPosition = 8; current_Y++; continue; }
+                    if (current_Y - 1 == routeOfMovement_y[i]) { robotRoute.Add(2); current_Y--; continue; }                
+                }
+                if (currentPosition == 4)
+                {
+                    if (current_X + 1 == routeOfMovement_x[i]) { robotRoute.Add(0); currentPosition = 6; current_X++; continue; }
+                    if (current_X - 1 == routeOfMovement_x[i]) { robotRoute.Add(2); current_X--; continue; }
+                    if (current_Y + 1 == routeOfMovement_y[i]) { robotRoute.Add(4); currentPosition = 8; current_Y++; continue; }
+                    if (current_Y - 1 == routeOfMovement_y[i]) { robotRoute.Add(6); currentPosition = 2; current_Y--; continue; }
+                }
+                if (currentPosition == 6)
+                {
+                    if (current_X + 1 == routeOfMovement_x[i]) { robotRoute.Add(2); current_X++; continue; }
+                    if (current_X - 1 == routeOfMovement_x[i]) { robotRoute.Add(0); currentPosition = 4; current_X--; continue; }
+                    if (current_Y + 1 == routeOfMovement_y[i]) { robotRoute.Add(6); currentPosition = 8; current_Y++; continue; }
+                    if (current_Y - 1 == routeOfMovement_y[i]) { robotRoute.Add(4); currentPosition = 2; current_Y--; continue; }
+
+                }
+                if (currentPosition == 8)
+
+                {
+                    if (current_X + 1 == routeOfMovement_x[i]) { robotRoute.Add(4); currentPosition = 6; current_X++; continue; }
+                    if (current_X - 1 == routeOfMovement_x[i]) { robotRoute.Add(6); currentPosition = 4; current_X--; continue; }
+                    if (current_Y + 1 == routeOfMovement_y[i]) { robotRoute.Add(2); current_Y++; continue; }
+                    if (current_Y - 1 == routeOfMovement_y[i]) { robotRoute.Add(0); currentPosition = 2; current_Y--; continue; }
+
+
+                }
+
+
+            }
 
 
             wayBuilt = true;
