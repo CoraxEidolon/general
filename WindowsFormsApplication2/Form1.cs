@@ -24,6 +24,18 @@ namespace WindowsFormsApplication2
         bool wayBuilt = false; //Отвечат за построен ли маршрут или нет
 
         List<int> robotRoute = new List<int>(); // готовый маршрут робота. Глобальный, чтобы иметь к нему доступ из любого метода
+        List<int> routeOfMovement_x = new List<int>(); //Список движения будет хранить конечный маршрут
+        List<int> routeOfMovement_y = new List<int>(); //Список движения будет хранить конечный маршрут
+        int buf_timer = 0;
+        int buf_timerPlus = 0;
+
+
+        int previousValue_timer=0;
+        int end_timer = 0;
+        int initialPositionRobot_timer = 0;
+
+
+
 
         /* Подключение к БД */
         string databaseWay = Environment.CurrentDirectory + "\\DatabaseMap.mdb";
@@ -369,15 +381,22 @@ namespace WindowsFormsApplication2
         {
             createMap_Click(sender, e);
         }
-
-
+   
         /* Проложить маршрут ********************************************************************/
         private void getDirections_Click(object sender, EventArgs e)
         {
+
+            robotRoute.Clear();
+            routeOfMovement_x.Clear();
+            routeOfMovement_y.Clear();
+            buf_timer = 0;
+            previousValue_timer = 0;
+            end_timer = 0;
+
             int matrixSize = (dataGridView1.ColumnCount) * (dataGridView1.RowCount);
             int start = 0;
             int finish = 0;
-           // int[,] adjacencyMatrix = new int[matrixSize, matrixSize];
+            // int[,] adjacencyMatrix = new int[matrixSize, matrixSize];
 
             int[,] adjacencyList = new int[matrixSize, 4];  // список смежноти
             int[,] adjacencyList_adjacentVertices = new int[matrixSize, 4]; // смежные вершины списка смежности 
@@ -387,141 +406,115 @@ namespace WindowsFormsApplication2
             {
                 for (int j = 0; j < 4; j++)//столбцы
                 {
-                    adjacencyList[i,j] = -1;
+                    adjacencyList[i, j] = -1;
                     adjacencyList_adjacentVertices[i, j] = -1;
                 }
+
             }
 
-
-                    int[,] vertexMatrix = new int[matrixSize, 2];
+            int[,] vertexMatrix = new int[matrixSize, 2];
             int stroka = 0;
             byte initialPositionRobot = 0; // Начальное положение робота
-                                               /**
-                                                * Важно определить начальное положение робота
-                                                * вводим следующее обозначение
-                                                * 2 - верх
-                                                * 4 - лево
-                                                * 6 - право
-                                                * 8 - низ
-                                                * как на кнопочных телефонах         
-                                                */
+                                           /**
+                                            * Важно определить начальное положение робота
+                                            * вводим следующее обозначение
+                                            * 2 - верх
+                                            * 4 - лево
+                                            * 6 - право
+                                            * 8 - низ
+                                            * как на кнопочных телефонах         
+                                            */
 
-                /* Ищем старт и финиш */
-                byte searchStartFinish = 0;
-                for (int i = 0; i < dataGridView1.RowCount; i++)//строки
+            /* Ищем старт и финиш */
+
+            byte searchStartFinish = 0;
+            for (int i = 0; i < dataGridView1.RowCount; i++)//строки
+            {
+                for (int j = 0; j < dataGridView1.ColumnCount; j++)//столбцы
                 {
-                    for (int j = 0; j < dataGridView1.ColumnCount; j++)//столбцы
-                    {
-                        /* Так как работа с текстовыми данными медленнее числовых временно заменяем все значения на числовые */
-                        if (Convert.ToString(dataGridView1.Rows[i].Cells[j].Value) == "▲") { initialPositionRobot = 2; start = (dataGridView1.ColumnCount * i) + j; dataGridView1.Rows[i].Cells[j].Value = "1"; searchStartFinish++; continue; }
-                        if (Convert.ToString(dataGridView1.Rows[i].Cells[j].Value) == "►") { initialPositionRobot = 6; start = (dataGridView1.ColumnCount * i) + j; dataGridView1.Rows[i].Cells[j].Value = "1"; searchStartFinish++; continue; }
-                        if (Convert.ToString(dataGridView1.Rows[i].Cells[j].Value) == "▼") { initialPositionRobot = 8; start = (dataGridView1.ColumnCount * i) + j; dataGridView1.Rows[i].Cells[j].Value = "1"; searchStartFinish++; continue; }
-                        if (Convert.ToString(dataGridView1.Rows[i].Cells[j].Value) == "◄") { initialPositionRobot = 4; start = (dataGridView1.ColumnCount * i) + j; dataGridView1.Rows[i].Cells[j].Value = "1"; searchStartFinish++; continue; }
-                        if (Convert.ToString(dataGridView1.Rows[i].Cells[j].Value) == "f") { finish = (dataGridView1.ColumnCount * i) + j; dataGridView1.Rows[i].Cells[j].Value = "1"; searchStartFinish++; continue; }
-                        if (searchStartFinish == 2) { break; }
-                    }
+                    /* Так как работа с текстовыми данными медленнее числовых временно заменяем все значения на числовые */
+                    if (Convert.ToString(dataGridView1.Rows[i].Cells[j].Value) == "▲") { initialPositionRobot = 2; start = (dataGridView1.ColumnCount * i) + j; dataGridView1.Rows[i].Cells[j].Value = "1"; searchStartFinish++; continue; }
+                    if (Convert.ToString(dataGridView1.Rows[i].Cells[j].Value) == "►") { initialPositionRobot = 6; start = (dataGridView1.ColumnCount * i) + j; dataGridView1.Rows[i].Cells[j].Value = "1"; searchStartFinish++; continue; }
+                    if (Convert.ToString(dataGridView1.Rows[i].Cells[j].Value) == "▼") { initialPositionRobot = 8; start = (dataGridView1.ColumnCount * i) + j; dataGridView1.Rows[i].Cells[j].Value = "1"; searchStartFinish++; continue; }
+                    if (Convert.ToString(dataGridView1.Rows[i].Cells[j].Value) == "◄") { initialPositionRobot = 4; start = (dataGridView1.ColumnCount * i) + j; dataGridView1.Rows[i].Cells[j].Value = "1"; searchStartFinish++; continue; }
+                    if (Convert.ToString(dataGridView1.Rows[i].Cells[j].Value) == "f") { finish = (dataGridView1.ColumnCount * i) + j; dataGridView1.Rows[i].Cells[j].Value = "1"; searchStartFinish++; continue; }
                     if (searchStartFinish == 2) { break; }
                 }
+                if (searchStartFinish == 2) { break; }
+            }
 
-
-                ///* Строим мтарицу смежности */
-                //for (int i = 0; i < dataGridView1.RowCount; i++)//строки
-                //{
-                //    for (int j = 0; j < dataGridView1.ColumnCount; j++)//столбцы
-                //    {
-                                                                                                                            
-                //        if (i + 1 < dataGridView1.RowCount)    { if (Convert.ToString(dataGridView1.Rows[i + 1].Cells[j].Value) != "w") { adjacencyMatrix[stroka, ((dataGridView1.ColumnCount * (i + 1)) + j)] = Convert.ToInt32(dataGridView1.Rows[i + 1].Cells[j].Value); } }
-                //        if (i - 1 >= 0)                        { if (Convert.ToString(dataGridView1.Rows[i - 1].Cells[j].Value) != "w") { adjacencyMatrix[stroka, ((dataGridView1.ColumnCount * (i - 1)) + j)] = Convert.ToInt32(dataGridView1.Rows[i - 1].Cells[j].Value); } }
-                //        if (j + 1 < dataGridView1.ColumnCount) { if (Convert.ToString(dataGridView1.Rows[i].Cells[j + 1].Value) != "w") { adjacencyMatrix[stroka, ((dataGridView1.ColumnCount * i) + (j + 1))] = Convert.ToInt32(dataGridView1.Rows[i].Cells[j + 1].Value); } }
-                //        if (j - 1 >= 0)                        { if (Convert.ToString(dataGridView1.Rows[i].Cells[j - 1].Value) != "w") { adjacencyMatrix[stroka, ((dataGridView1.ColumnCount * i) + (j - 1))] = Convert.ToInt32(dataGridView1.Rows[i].Cells[j - 1].Value); } }
-                //        vertexMatrix[stroka, 0] = i;
-                //        vertexMatrix[stroka, 1] = j;
-                //        stroka++;
-                //    }
-                //}
-
-
-           
-            ////////////////////////
             /* Строим список смежности */
             for (int i = 0; i < dataGridView1.RowCount; i++)//строки
             {
-              
+
                 for (int j = 0; j < dataGridView1.ColumnCount; j++)//столбцы
                 {
                     int stolb = 0;
-                    if (i + 1 < dataGridView1.RowCount)    { if (Convert.ToString(dataGridView1.Rows[i + 1].Cells[j].Value) != "w") { adjacencyList[stroka, stolb] = Convert.ToInt32(dataGridView1.Rows[i + 1].Cells[j].Value);  adjacencyList_adjacentVertices[stroka, stolb] = ((dataGridView1.ColumnCount * (i + 1)) + j); stolb++; } }
-                    if (i - 1 >= 0)                        { if (Convert.ToString(dataGridView1.Rows[i - 1].Cells[j].Value) != "w") { adjacencyList[stroka, stolb] = Convert.ToInt32(dataGridView1.Rows[i - 1].Cells[j].Value);  adjacencyList_adjacentVertices[stroka, stolb] = ((dataGridView1.ColumnCount * (i - 1)) + j); stolb++; } }
-                    if (j + 1 < dataGridView1.ColumnCount) { if (Convert.ToString(dataGridView1.Rows[i].Cells[j + 1].Value) != "w") { adjacencyList[stroka, stolb] = Convert.ToInt32(dataGridView1.Rows[i].Cells[j + 1].Value);  adjacencyList_adjacentVertices[stroka, stolb] = ((dataGridView1.ColumnCount * i) + (j + 1)); stolb++; } }
-                    if (j - 1 >= 0)                        { if (Convert.ToString(dataGridView1.Rows[i].Cells[j - 1].Value) != "w") { adjacencyList[stroka, stolb] = Convert.ToInt32(dataGridView1.Rows[i].Cells[j - 1].Value);  adjacencyList_adjacentVertices[stroka, stolb] = ((dataGridView1.ColumnCount * i) + (j - 1)); stolb++; } }
+                    if (i + 1 < dataGridView1.RowCount) { if (Convert.ToString(dataGridView1.Rows[i + 1].Cells[j].Value) != "w") { adjacencyList[stroka, stolb] = Convert.ToInt32(dataGridView1.Rows[i + 1].Cells[j].Value); adjacencyList_adjacentVertices[stroka, stolb] = ((dataGridView1.ColumnCount * (i + 1)) + j); stolb++; } }
+                    if (i - 1 >= 0) { if (Convert.ToString(dataGridView1.Rows[i - 1].Cells[j].Value) != "w") { adjacencyList[stroka, stolb] = Convert.ToInt32(dataGridView1.Rows[i - 1].Cells[j].Value); adjacencyList_adjacentVertices[stroka, stolb] = ((dataGridView1.ColumnCount * (i - 1)) + j); stolb++; } }
+                    if (j + 1 < dataGridView1.ColumnCount) { if (Convert.ToString(dataGridView1.Rows[i].Cells[j + 1].Value) != "w") { adjacencyList[stroka, stolb] = Convert.ToInt32(dataGridView1.Rows[i].Cells[j + 1].Value); adjacencyList_adjacentVertices[stroka, stolb] = ((dataGridView1.ColumnCount * i) + (j + 1)); stolb++; } }
+                    if (j - 1 >= 0) { if (Convert.ToString(dataGridView1.Rows[i].Cells[j - 1].Value) != "w") { adjacencyList[stroka, stolb] = Convert.ToInt32(dataGridView1.Rows[i].Cells[j - 1].Value); adjacencyList_adjacentVertices[stroka, stolb] = ((dataGridView1.ColumnCount * i) + (j - 1)); stolb++; } }
                     vertexMatrix[stroka, 0] = i;
                     vertexMatrix[stroka, 1] = j;
                     stroka++;
                 }
             }
-            ///////////////////////////////
-
 
             const int infinity = 999999999;// Бесконечность
             int currentVertex; // текущая вершина
-                                            // Будем искать путь из вершины s в вершину g
+                               // Будем искать путь из вершины s в вершину g
             bool[] visit = new bool[matrixSize]; //посещенные вершины
             int[] vertexLabels = new int[matrixSize]; //Мектки вершин
             int[] way = new int[matrixSize]; // запоминает последнюю вершину для нахождения пути назад
             int[] vertex = new int[matrixSize];//хранит соседние вершиеы
-            List<int> routeOfMovement_x = new List<int>(); //Маршрут движения будет хранить конечный маршрут
-            List<int> routeOfMovement_y = new List<int>(); //Маршрут движения будет хранить конечный маршрут
                                                            /*
                                                             * Введем следеющее обозначения:
                                                             * 2- движение прямо ^
                                                             * 4-поворот налево <=
                                                             * 6-поворот направо =>
                                                             */
-
-
-
-            /* метка всех вершин бесконечность */
+                                                           /* метка всех вершин бесконечность */
             for (int i = 0; i < matrixSize; i++)
+            {
+                vertexLabels[i] = infinity;
+                vertex[i] = infinity;
+            }
+            way[start] = 0;          // s - начало пути, поэтому этой вершине ничего не предшествует
+            vertexLabels[start] = 0; // Кратчайший путь из start в start равен 0 /начальная метка как в википедии и норм статьях
+            visit[start] = true;       // Вершина s посещена
+            currentVertex = start;    // Делаем s текущей вершиной
+
+            while (true)
+            {
+                // Перебираем все вершины, смежные v, и ищем для них кратчайший путь
+                for (int i = 0; i < 4; i++)
                 {
-                    vertexLabels[i] = infinity;
-                    vertex[i] = infinity;
+                    if (adjacencyList[currentVertex, i] == -1) continue; // Вершины u и v несмежные
+                    if (visit[adjacencyList_adjacentVertices[currentVertex, i]] == false && vertexLabels[adjacencyList_adjacentVertices[currentVertex, i]] > vertexLabels[currentVertex] + adjacencyList[currentVertex, i])
+                    {
+                        vertexLabels[adjacencyList_adjacentVertices[currentVertex, i]] = vertexLabels[currentVertex] + adjacencyList[currentVertex, i]; //новая метка вершины
+                        way[adjacencyList_adjacentVertices[currentVertex, i]] = currentVertex;//запоминаем, что v->u часть кратчайшего пути из s->u
+                        vertex[adjacencyList_adjacentVertices[currentVertex, i]] = vertexLabels[adjacencyList_adjacentVertices[currentVertex, i]];
+
+                        // adjacencyList_adjacentVertices[currentVertex, i]
+                    }
                 }
-                way[start] = 0;          // s - начало пути, поэтому этой вершине ничего не предшествует
-                vertexLabels[start] = 0; // Кратчайший путь из start в start равен 0 /начальная метка как в википедии и норм статьях
-                visit[start] = true;       // Вершина s посещена
-                currentVertex = start;    // Делаем s текущей вершиной
 
-                while (true)
+                currentVertex = -1;// В конце поиска v - вершина, в которую будет найден новый кратчайший путь. Она станет текущей вершиной
+                if (visit[Array.IndexOf(vertex, vertex.Min())] == false)
                 {
-                    // Перебираем все вершины, смежные v, и ищем для них кратчайший путь
-                    for (int i = 0; i < 4; i++)
-                    {
-                        if (adjacencyList[currentVertex, i] == -1) continue; // Вершины u и v несмежные
-                        if (visit[adjacencyList_adjacentVertices[currentVertex, i]] == false && vertexLabels[adjacencyList_adjacentVertices[currentVertex, i]] > vertexLabels[currentVertex] + adjacencyList[currentVertex, i])
-                        {
-                            vertexLabels[ adjacencyList_adjacentVertices[currentVertex, i] ] = vertexLabels[currentVertex] + adjacencyList[currentVertex, i]; //новая метка вершины
-                            way[adjacencyList_adjacentVertices[currentVertex, i]] = currentVertex;//запоминаем, что v->u часть кратчайшего пути из s->u
-                            vertex[adjacencyList_adjacentVertices[currentVertex, i]] = vertexLabels[adjacencyList_adjacentVertices[currentVertex, i]];
+                    currentVertex = Array.IndexOf(vertex, vertex.Min());
+                    vertex[Array.IndexOf(vertex, vertex.Min())] = infinity;
+                }
 
-                       // adjacencyList_adjacentVertices[currentVertex, i]
-                        }
-                    }
-
-                    currentVertex = -1;// В конце поиска v - вершина, в которую будет найден новый кратчайший путь. Она станет текущей вершиной
-                    if (visit[Array.IndexOf(vertex, vertex.Min())] == false)
-                    {
-                        currentVertex = Array.IndexOf(vertex, vertex.Min());
-                        vertex[Array.IndexOf(vertex, vertex.Min())] = infinity;
-                    }
-
-                    if (currentVertex == -1)
-                    {
-                        MessageBox.Show("Нет пути из вершины " + Convert.ToString(start) + " в вершину " + Convert.ToString(finish));
-                        break;
-                    }
-                    if (currentVertex == finish) // Найден кратчайший путь,
-                    {        // выводим его
-                        int u = finish;                       
+                if (currentVertex == -1)
+                {
+                    MessageBox.Show("Нет пути из вершины " + Convert.ToString(start) + " в вершину " + Convert.ToString(finish));
+                    break;
+                }
+                if (currentVertex == finish) // Найден кратчайший путь,
+                {        // выводим его
+                    int u = finish;
                     while (u != start)
                     {
                         dataGridView1.Rows[vertexMatrix[u, 0]].Cells[vertexMatrix[u, 1]].Style.BackColor = Color.Gold;
@@ -531,30 +524,27 @@ namespace WindowsFormsApplication2
                     }
                     break;
                 }
-                    visit[currentVertex] = true;
-                }/// while 
+                visit[currentVertex] = true;
+            }/// while 
 
 
             if (initialPositionRobot == 2) { dataGridView1.Rows[vertexMatrix[start, 0]].Cells[vertexMatrix[start, 1]].Value = "▲"; dataGridView1.Rows[vertexMatrix[start, 0]].Cells[vertexMatrix[start, 1]].Style.BackColor = Color.GreenYellow; }
             if (initialPositionRobot == 4) { dataGridView1.Rows[vertexMatrix[start, 0]].Cells[vertexMatrix[start, 1]].Value = "◄"; dataGridView1.Rows[vertexMatrix[start, 0]].Cells[vertexMatrix[start, 1]].Style.BackColor = Color.GreenYellow; }
             if (initialPositionRobot == 6) { dataGridView1.Rows[vertexMatrix[start, 0]].Cells[vertexMatrix[start, 1]].Value = "►"; dataGridView1.Rows[vertexMatrix[start, 0]].Cells[vertexMatrix[start, 1]].Style.BackColor = Color.GreenYellow; }
             if (initialPositionRobot == 8) { dataGridView1.Rows[vertexMatrix[start, 0]].Cells[vertexMatrix[start, 1]].Value = "▼"; dataGridView1.Rows[vertexMatrix[start, 0]].Cells[vertexMatrix[start, 1]].Style.BackColor = Color.GreenYellow; }
-
             dataGridView1.Rows[vertexMatrix[finish, 0]].Cells[vertexMatrix[finish, 1]].Value = "f";
             dataGridView1.Rows[vertexMatrix[finish, 0]].Cells[vertexMatrix[finish, 1]].Style.BackColor = Color.Gold;
-
-
             int current_X = vertexMatrix[start, 1];
             int current_Y = vertexMatrix[start, 0];
             int currentPosition = initialPositionRobot;
-            for (int i= routeOfMovement_x.Count-1; i >=0 ; i--)
+            for (int i = routeOfMovement_x.Count - 1; i >= 0; i--)
             {
                 if (currentPosition == 2)
                 {
-                    if (current_X + 1 == routeOfMovement_x[i]) { robotRoute.Add(6); currentPosition = 6; current_X++; continue;  }
+                    if (current_X + 1 == routeOfMovement_x[i]) { robotRoute.Add(6); currentPosition = 6; current_X++; continue; }
                     if (current_X - 1 == routeOfMovement_x[i]) { robotRoute.Add(4); currentPosition = 4; current_X--; continue; }
                     if (current_Y + 1 == routeOfMovement_y[i]) { robotRoute.Add(0); currentPosition = 8; current_Y++; continue; }
-                    if (current_Y - 1 == routeOfMovement_y[i]) { robotRoute.Add(2); current_Y--; continue; }                
+                    if (current_Y - 1 == routeOfMovement_y[i]) { robotRoute.Add(2); current_Y--; continue; }
                 }
                 if (currentPosition == 4)
                 {
@@ -579,9 +569,16 @@ namespace WindowsFormsApplication2
                 }
             }//for
             wayBuilt = true;
+            buf_timer = robotRoute.Count();
+            buf_timerPlus = 0;
+            end_timer = robotRoute.Count();
+            initialPositionRobot_timer = initialPositionRobot;
         }// проложить маршрут
 
-       
+
+
+
+
         private void loadMapIntoRobot_Click(object sender, EventArgs e)
         {
             if (Convert.ToString(selectTable.Text) != "Выберете карту")
@@ -664,7 +661,56 @@ namespace WindowsFormsApplication2
 
         }
 
+        private void timer1_Tick(object sender, EventArgs e)
+        {
 
 
+            for (int i=0; i<1; i++)
+            {
+
+                if (initialPositionRobot_timer == 2) //▲
+                {
+                    if (robotRoute[buf_timerPlus] == 2) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "▲"; initialPositionRobot_timer = 2; break; }
+                    if (robotRoute[buf_timerPlus] == 4) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "◄"; initialPositionRobot_timer = 4; break; }
+                    if (robotRoute[buf_timerPlus] == 6) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "►"; initialPositionRobot_timer = 6; break; }
+                    if (robotRoute[buf_timerPlus] == 0) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "▼"; initialPositionRobot_timer = 8; break; }
+                }
+
+                if (initialPositionRobot_timer == 4) //◄
+                {
+                    if (robotRoute[buf_timerPlus] == 2) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "◄"; initialPositionRobot_timer = 4; break; }
+                    if (robotRoute[buf_timerPlus] == 4) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "▼"; initialPositionRobot_timer = 8; break; }
+                    if (robotRoute[buf_timerPlus] == 6) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "▲"; initialPositionRobot_timer = 2; break; }
+                    if (robotRoute[buf_timerPlus] == 0) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "►"; initialPositionRobot_timer = 6; break; }
+                }
+                if (initialPositionRobot_timer == 6) //►
+                {
+                    if (robotRoute[buf_timerPlus] == 2) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "►"; initialPositionRobot_timer = 6; break; }
+                    if (robotRoute[buf_timerPlus] == 4) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "▲"; initialPositionRobot_timer = 2; break; }
+                    if (robotRoute[buf_timerPlus] == 6) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "▼"; initialPositionRobot_timer = 8; break; }
+                    if (robotRoute[buf_timerPlus] == 0) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "◄"; initialPositionRobot_timer = 4; break; }
+                }
+                if (initialPositionRobot_timer == 8)//▼
+                {
+                    if (robotRoute[buf_timerPlus] == 2) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "▼"; initialPositionRobot_timer = 8; break; }
+                    if (robotRoute[buf_timerPlus] == 4) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "►"; initialPositionRobot_timer = 6; break; }
+                    if (robotRoute[buf_timerPlus] == 6) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "◄"; initialPositionRobot_timer = 4; break; }
+                    if (robotRoute[buf_timerPlus] == 0) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "▲"; initialPositionRobot_timer = 2; break; }
+                }
+
+            }
+            dataGridView1.Rows[routeOfMovement_y[buf_timer-1]].Cells[routeOfMovement_x[buf_timer-1]].Style.BackColor = Color.Red;
+         
+
+            buf_timer--;
+            buf_timerPlus++;
+            if (buf_timer == 0) { timer1.Enabled = false; }
+         
+        }
+
+        private void sendWayRobot_Click(object sender, EventArgs e)
+        {
+            timer1.Enabled = true;
+        }
     } // form class
 } //namespace 
