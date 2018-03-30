@@ -84,8 +84,7 @@ namespace WindowsFormsApplication2
 
         private string deleteFinish(string str)
         {
-            int ind = 1;
-            if (str.IndexOf("f") >= 0) { ind = str.IndexOf("f"); }
+            if (str.IndexOf("f") >= 0) { int ind = str.IndexOf("f"); str = str.Remove(ind); }         
             return str;
         }
 
@@ -319,7 +318,6 @@ namespace WindowsFormsApplication2
                 tableLoad();
                 statusBar.SelectionColor = Color.Red;
                 statusBar.AppendText("Карта «" + selectTable.Text + "» была удалена \n");
-
             }
         }
 
@@ -370,18 +368,18 @@ namespace WindowsFormsApplication2
                 {
                     setFinish = true;
                     resizeMap();
-                    dataGridView1.CurrentCell.Value = "f";
+                    dataGridView1.CurrentCell.Value =Convert.ToString(dataGridView1.CurrentCell.Value)+"f";
                     dataGridView1.CurrentCell.Style.BackColor = Color.Gold;
                     dataGridView1.CurrentCell.ReadOnly = true;
                 }    
             }
             else
             {
-                if (Convert.ToString(dataGridView1.CurrentCell.Value) == "f")
+                if (searchFinishInstall( Convert.ToString(dataGridView1.CurrentCell.Value))== true)
                 {
                     setFinish = false;
                     resizeMap();
-                    dataGridView1.CurrentCell.Value = "1";
+                    dataGridView1.CurrentCell.Value = deleteFinish(Convert.ToString(dataGridView1.CurrentCell.Value)) ;/////////////////////////////////
                     dataGridView1.CurrentCell.Style.BackColor = Color.White;
                     dataGridView1.CurrentCell.ReadOnly = false;
                 }
