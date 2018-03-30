@@ -24,23 +24,14 @@ namespace WindowsFormsApplication2
         bool wayBuilt = false; //Отвечат за построен ли маршрут или нет
 
         List<int> robotRoute = new List<int>(); // готовый маршрут робота. Глобальный, чтобы иметь к нему доступ из любого метода
-        List<int> routeOfMovement_x = new List<int>(); //Список движения будет хранить конечный маршрут
-        List<int> routeOfMovement_y = new List<int>(); //Список движения будет хранить конечный маршрут
-        int buf_timer = 0;
         int buf_timerPlus = 0;
-
-
         int previousValue_timer=0;
-        int end_timer = 0;
         int initialPositionRobot_timer = 0;
-
-
-
-
+        int X_timer = 0;
+        int Y_timer = 0;
         /* Подключение к БД */
         string databaseWay = Environment.CurrentDirectory + "\\DatabaseMap.mdb";
         string connectionString = @"provider=Microsoft.Jet.OLEDB.4.0; data source=" + Environment.CurrentDirectory + "\\DatabaseMap.mdb";
-
 
         public Form1()
         {
@@ -57,8 +48,48 @@ namespace WindowsFormsApplication2
             {
                 ComPortNumber.Items.Add(ports[i].ToString());
             }
-
         }
+
+        /* Проверка, установлен робот на карту ********************************************************************/
+        private bool searchRobotInstall(string str)
+        {
+            bool rez = false;
+            if (str.IndexOf("▲")>=0) { rez = true; }
+            if (str.IndexOf("►")>=0) { rez = true; }
+            if (str.IndexOf("▼")>=0) { rez = true; }
+            if (str.IndexOf("◄")>=0) { rez = true; }
+            return rez;
+        }
+        /* Удаляет робота с карты ********************************************************************/
+        private string DeleteRobot(string str)
+        {
+            int ind=1;
+            if (str.IndexOf("▲") >= 0) { ind = str.IndexOf("▲"); }
+            if (str.IndexOf("►") >= 0) { ind = str.IndexOf("►"); }
+            if (str.IndexOf("▼") >= 0) { ind = str.IndexOf("▼"); }
+            if (str.IndexOf("◄") >= 0) { ind = str.IndexOf("◄"); }
+            str=str.Remove(ind);
+            return str;
+        }
+
+
+
+        /* Проверка, установлен финиш ********************************************************************/
+        private bool searchFinishInstall(string str)
+        {
+            bool rez = false;
+            if (str.IndexOf("f") >= 0) { rez = true; }        
+            return rez;
+        }
+
+        private string deleteFinish(string str)
+        {
+            int ind = 1;
+            if (str.IndexOf("f") >= 0) { ind = str.IndexOf("f"); }
+            return str;
+        }
+
+
         /* Проверка, что ячейки не пустые ********************************************************************/
         private bool emptyCells()
         {
@@ -99,28 +130,31 @@ namespace WindowsFormsApplication2
             {
                 if (installRobot == false)
                 {
-
-                    if (Convert.ToString(dataGridView1.CurrentCell.Value) == "f")
+                    if (Convert.ToString(dataGridView1.CurrentCell.Value) == "w")
                     {
-                        MessageBox.Show("На этой клетке установлен финиш!");
+                        MessageBox.Show("На этой клетке находится непроходимое препятствие!");
                     }
                     else
                     {
-                        dataGridView1.CurrentCell.Value = robotPosition.SelectedItem;
-                        dataGridView1.CurrentCell.ReadOnly = true;
-                        installRobot = true;
-                        resizeMap();
-                        dataGridView1.CurrentCell.Style.BackColor = Color.GreenYellow;
+                        if (searchFinishInstall(Convert.ToString(dataGridView1.CurrentCell.Value)) == true)
+                        {
+                            MessageBox.Show("На этой клетке установлен финиш!");
+                        }
+                        else
+                        {
+                            dataGridView1.CurrentCell.Value = Convert.ToString(dataGridView1.CurrentCell.Value) + Convert.ToString(robotPosition.SelectedItem);
+                            dataGridView1.CurrentCell.ReadOnly = true;
+                            installRobot = true;
+                            resizeMap();
+                            dataGridView1.CurrentCell.Style.BackColor = Color.GreenYellow;
+                        }
                     }
-                }
+                }//installRobot == false
                 else
                 {
-                    if (Convert.ToString(dataGridView1.CurrentCell.Value) == "▲" ||
-                        Convert.ToString(dataGridView1.CurrentCell.Value) == "►" ||
-                        Convert.ToString(dataGridView1.CurrentCell.Value) == "▼" ||
-                        Convert.ToString(dataGridView1.CurrentCell.Value) == "◄")
+                    if ( searchRobotInstall(Convert.ToString(dataGridView1.CurrentCell.Value)) == true )
                     {
-                        dataGridView1.CurrentCell.Value = "0";
+                        dataGridView1.CurrentCell.Value = DeleteRobot(Convert.ToString(dataGridView1.CurrentCell.Value));///////////////////////
                         dataGridView1.CurrentCell.ReadOnly = false;
                         installRobot = false;
                         resizeMap();
@@ -205,7 +239,7 @@ namespace WindowsFormsApplication2
                 e.KeyChar = '\0';
         }
 
-        /* При элемента ComboBox автоматически показывается выбранная таблица ********************************************************************/
+        /* При нажатие на элемент ComboBox автоматически показывается выбранная таблица ********************************************************************/
         private void selectTable_SelectedIndexChanged(object sender, EventArgs e)
         {
            if (selectTable.Items.Count > 0)
@@ -233,10 +267,7 @@ namespace WindowsFormsApplication2
                     dataGridView1.Rows[a].Cells[b].Value = mas[i];
                     dataGridView1.Rows[a].Cells[b].Style.BackColor = Color.White;
 
-                    if (Convert.ToString(dataGridView1.Rows[a].Cells[b].Value) == "▲" ||
-                        Convert.ToString(dataGridView1.Rows[a].Cells[b].Value) == "►" ||
-                        Convert.ToString(dataGridView1.Rows[a].Cells[b].Value) == "▼" ||
-                        Convert.ToString(dataGridView1.Rows[a].Cells[b].Value) == "◄")
+                    if (searchRobotInstall(Convert.ToString(dataGridView1.Rows[a].Cells[b].Value)))
                     {
                         dataGridView1.Rows[a].Cells[b].ReadOnly = true;
                         dataGridView1.Rows[a].Cells[b].Style.BackColor = Color.GreenYellow;
@@ -244,7 +275,7 @@ namespace WindowsFormsApplication2
                         InstallOrRemoveRobot.Text = "Убрать";
                     }
 
-                    if (Convert.ToString(dataGridView1.Rows[a].Cells[b].Value) == "f")
+                    if (searchFinishInstall(Convert.ToString(dataGridView1.Rows[a].Cells[b].Value)) == true)
                     {
                         dataGridView1.Rows[a].Cells[b].ReadOnly = true;
                         dataGridView1.Rows[a].Cells[b].Style.BackColor = Color.Gold;
@@ -333,10 +364,7 @@ namespace WindowsFormsApplication2
         {
             if (setFinish == false)
             {
-                if (Convert.ToString(dataGridView1.CurrentCell.Value) == "▲" ||
-                    Convert.ToString(dataGridView1.CurrentCell.Value) == "►" ||
-                    Convert.ToString(dataGridView1.CurrentCell.Value) == "▼" ||
-                    Convert.ToString(dataGridView1.CurrentCell.Value) == "◄")
+                if (searchRobotInstall(Convert.ToString(dataGridView1.CurrentCell.Value))==true)
                 { MessageBox.Show("На этой клетке установлен робот!"); }
                 else
                 {
@@ -387,11 +415,8 @@ namespace WindowsFormsApplication2
         {
 
             robotRoute.Clear();
-            routeOfMovement_x.Clear();
-            routeOfMovement_y.Clear();
-            buf_timer = 0;
-            previousValue_timer = 0;
-            end_timer = 0;
+            buf_timerPlus = 0;
+
 
             int matrixSize = (dataGridView1.ColumnCount) * (dataGridView1.RowCount);
             int start = 0;
@@ -467,13 +492,16 @@ namespace WindowsFormsApplication2
             int[] vertexLabels = new int[matrixSize]; //Мектки вершин
             int[] way = new int[matrixSize]; // запоминает последнюю вершину для нахождения пути назад
             int[] vertex = new int[matrixSize];//хранит соседние вершиеы
-                                                           /*
-                                                            * Введем следеющее обозначения:
-                                                            * 2- движение прямо ^
-                                                            * 4-поворот налево <=
-                                                            * 6-поворот направо =>
-                                                            */
-                                                           /* метка всех вершин бесконечность */
+                                               /*
+                                                * Введем следеющее обозначения:
+                                                * 2- движение прямо ^
+                                                * 4-поворот налево <=
+                                                * 6-поворот направо =>
+                                                */
+                                               /* метка всех вершин бесконечность */
+
+            List<int> routeOfMovement_x = new List<int>(); //Список движения будет хранить конечный маршрут
+            List<int> routeOfMovement_y = new List<int>(); //Список движения будет хранить конечный маршрут
             for (int i = 0; i < matrixSize; i++)
             {
                 vertexLabels[i] = infinity;
@@ -499,6 +527,9 @@ namespace WindowsFormsApplication2
                         // adjacencyList_adjacentVertices[currentVertex, i]
                     }
                 }
+
+
+               
 
                 currentVertex = -1;// В конце поиска v - вершина, в которую будет найден новый кратчайший путь. Она станет текущей вершиной
                 if (visit[Array.IndexOf(vertex, vertex.Min())] == false)
@@ -532,6 +563,7 @@ namespace WindowsFormsApplication2
             if (initialPositionRobot == 4) { dataGridView1.Rows[vertexMatrix[start, 0]].Cells[vertexMatrix[start, 1]].Value = "◄"; dataGridView1.Rows[vertexMatrix[start, 0]].Cells[vertexMatrix[start, 1]].Style.BackColor = Color.GreenYellow; }
             if (initialPositionRobot == 6) { dataGridView1.Rows[vertexMatrix[start, 0]].Cells[vertexMatrix[start, 1]].Value = "►"; dataGridView1.Rows[vertexMatrix[start, 0]].Cells[vertexMatrix[start, 1]].Style.BackColor = Color.GreenYellow; }
             if (initialPositionRobot == 8) { dataGridView1.Rows[vertexMatrix[start, 0]].Cells[vertexMatrix[start, 1]].Value = "▼"; dataGridView1.Rows[vertexMatrix[start, 0]].Cells[vertexMatrix[start, 1]].Style.BackColor = Color.GreenYellow; }
+   
             dataGridView1.Rows[vertexMatrix[finish, 0]].Cells[vertexMatrix[finish, 1]].Value = "f";
             dataGridView1.Rows[vertexMatrix[finish, 0]].Cells[vertexMatrix[finish, 1]].Style.BackColor = Color.Gold;
             int current_X = vertexMatrix[start, 1];
@@ -541,37 +573,37 @@ namespace WindowsFormsApplication2
             {
                 if (currentPosition == 2)
                 {
-                    if (current_X + 1 == routeOfMovement_x[i]) { robotRoute.Add(6); currentPosition = 6; current_X++; continue; }
-                    if (current_X - 1 == routeOfMovement_x[i]) { robotRoute.Add(4); currentPosition = 4; current_X--; continue; }
-                    if (current_Y + 1 == routeOfMovement_y[i]) { robotRoute.Add(0); currentPosition = 8; current_Y++; continue; }
+                    if (current_X + 1 == routeOfMovement_x[i]) { robotRoute.Add(6); robotRoute.Add(2); currentPosition = 6; current_X++; continue; }
+                    if (current_X - 1 == routeOfMovement_x[i]) { robotRoute.Add(4); robotRoute.Add(2); currentPosition = 4; current_X--; continue; }
+                    if (current_Y + 1 == routeOfMovement_y[i]) { robotRoute.Add(0); robotRoute.Add(2); currentPosition = 8; current_Y++; continue; }
                     if (current_Y - 1 == routeOfMovement_y[i]) { robotRoute.Add(2); current_Y--; continue; }
                 }
                 if (currentPosition == 4)
                 {
-                    if (current_X + 1 == routeOfMovement_x[i]) { robotRoute.Add(0); currentPosition = 6; current_X++; continue; }
-                    if (current_X - 1 == routeOfMovement_x[i]) { robotRoute.Add(2); current_X--; continue; }
-                    if (current_Y + 1 == routeOfMovement_y[i]) { robotRoute.Add(4); currentPosition = 8; current_Y++; continue; }
-                    if (current_Y - 1 == routeOfMovement_y[i]) { robotRoute.Add(6); currentPosition = 2; current_Y--; continue; }
+                    if (current_X + 1 == routeOfMovement_x[i]) { robotRoute.Add(0); robotRoute.Add(2); currentPosition = 6; current_X++; continue; }
+                    if (current_X - 1 == routeOfMovement_x[i]) { robotRoute.Add(2);  current_X--; continue; }
+                    if (current_Y + 1 == routeOfMovement_y[i]) { robotRoute.Add(4); robotRoute.Add(2); currentPosition = 8; current_Y++; continue; }
+                    if (current_Y - 1 == routeOfMovement_y[i]) { robotRoute.Add(6); robotRoute.Add(2); currentPosition = 2; current_Y--; continue; }
                 }
                 if (currentPosition == 6)
                 {
                     if (current_X + 1 == routeOfMovement_x[i]) { robotRoute.Add(2); current_X++; continue; }
-                    if (current_X - 1 == routeOfMovement_x[i]) { robotRoute.Add(0); currentPosition = 4; current_X--; continue; }
-                    if (current_Y + 1 == routeOfMovement_y[i]) { robotRoute.Add(6); currentPosition = 8; current_Y++; continue; }
-                    if (current_Y - 1 == routeOfMovement_y[i]) { robotRoute.Add(4); currentPosition = 2; current_Y--; continue; }
+                    if (current_X - 1 == routeOfMovement_x[i]) { robotRoute.Add(0); robotRoute.Add(2); currentPosition = 4; current_X--; continue; }
+                    if (current_Y + 1 == routeOfMovement_y[i]) { robotRoute.Add(6); robotRoute.Add(2); currentPosition = 8; current_Y++; continue; }
+                    if (current_Y - 1 == routeOfMovement_y[i]) { robotRoute.Add(4); robotRoute.Add(2); currentPosition = 2; current_Y--; continue; }
                 }
                 if (currentPosition == 8)
                 {
-                    if (current_X + 1 == routeOfMovement_x[i]) { robotRoute.Add(4); currentPosition = 6; current_X++; continue; }
-                    if (current_X - 1 == routeOfMovement_x[i]) { robotRoute.Add(6); currentPosition = 4; current_X--; continue; }
+                    if (current_X + 1 == routeOfMovement_x[i]) { robotRoute.Add(4); robotRoute.Add(2); currentPosition = 6; current_X++; continue; }
+                    if (current_X - 1 == routeOfMovement_x[i]) { robotRoute.Add(6); robotRoute.Add(2); currentPosition = 4; current_X--; continue; }
                     if (current_Y + 1 == routeOfMovement_y[i]) { robotRoute.Add(2); current_Y++; continue; }
-                    if (current_Y - 1 == routeOfMovement_y[i]) { robotRoute.Add(0); currentPosition = 2; current_Y--; continue; }
+                    if (current_Y - 1 == routeOfMovement_y[i]) { robotRoute.Add(0); robotRoute.Add(2); currentPosition = 2; current_Y--; continue; }
                 }
             }//for
-            wayBuilt = true;
-            buf_timer = robotRoute.Count();
+            wayBuilt = true;        
             buf_timerPlus = 0;
-            end_timer = robotRoute.Count();
+            X_timer = vertexMatrix[start, 1];
+            Y_timer = vertexMatrix[start, 0];
             initialPositionRobot_timer = initialPositionRobot;
         }// проложить маршрут
 
@@ -662,52 +694,51 @@ namespace WindowsFormsApplication2
         }
 
         private void timer1_Tick(object sender, EventArgs e)
-        {
-
-
+        {           
             for (int i=0; i<1; i++)
             {
 
-                if (initialPositionRobot_timer == 2) //▲
+                if (robotRoute[buf_timerPlus] == 4) 
                 {
-                    if (robotRoute[buf_timerPlus] == 2) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "▲"; initialPositionRobot_timer = 2; break; }
-                    if (robotRoute[buf_timerPlus] == 4) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "◄"; initialPositionRobot_timer = 4; break; }
-                    if (robotRoute[buf_timerPlus] == 6) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "►"; initialPositionRobot_timer = 6; break; }
-                    if (robotRoute[buf_timerPlus] == 0) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "▼"; initialPositionRobot_timer = 8; break; }
+                    if (initialPositionRobot_timer == 2) { initialPositionRobot_timer = 4; dataGridView1.Rows[Y_timer].Cells[X_timer].Value = "◄"; break; }
+                    if (initialPositionRobot_timer == 4) { initialPositionRobot_timer = 8; dataGridView1.Rows[Y_timer].Cells[X_timer].Value = "▼"; break; }
+                    if (initialPositionRobot_timer == 6) { initialPositionRobot_timer = 2; dataGridView1.Rows[Y_timer].Cells[X_timer].Value = "▲"; break; }
+                    if (initialPositionRobot_timer == 8) { initialPositionRobot_timer = 6; dataGridView1.Rows[Y_timer].Cells[X_timer].Value = "►"; break; }
                 }
 
-                if (initialPositionRobot_timer == 4) //◄
+                if (robotRoute[buf_timerPlus] == 6) 
                 {
-                    if (robotRoute[buf_timerPlus] == 2) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "◄"; initialPositionRobot_timer = 4; break; }
-                    if (robotRoute[buf_timerPlus] == 4) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "▼"; initialPositionRobot_timer = 8; break; }
-                    if (robotRoute[buf_timerPlus] == 6) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "▲"; initialPositionRobot_timer = 2; break; }
-                    if (robotRoute[buf_timerPlus] == 0) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "►"; initialPositionRobot_timer = 6; break; }
+                    if (initialPositionRobot_timer == 2) { initialPositionRobot_timer = 6; dataGridView1.Rows[Y_timer].Cells[X_timer].Value = "►"; break; }
+                    if (initialPositionRobot_timer == 4) { initialPositionRobot_timer = 2; dataGridView1.Rows[Y_timer].Cells[X_timer].Value = "▲"; break; }
+                    if (initialPositionRobot_timer == 6) { initialPositionRobot_timer = 8; dataGridView1.Rows[Y_timer].Cells[X_timer].Value = "▼"; break; }
+                    if (initialPositionRobot_timer == 8) { initialPositionRobot_timer = 4; dataGridView1.Rows[Y_timer].Cells[X_timer].Value = "◄"; break; }
                 }
-                if (initialPositionRobot_timer == 6) //►
+                if (robotRoute[buf_timerPlus] == 0) 
                 {
-                    if (robotRoute[buf_timerPlus] == 2) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "►"; initialPositionRobot_timer = 6; break; }
-                    if (robotRoute[buf_timerPlus] == 4) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "▲"; initialPositionRobot_timer = 2; break; }
-                    if (robotRoute[buf_timerPlus] == 6) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "▼"; initialPositionRobot_timer = 8; break; }
-                    if (robotRoute[buf_timerPlus] == 0) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "◄"; initialPositionRobot_timer = 4; break; }
+                    if (initialPositionRobot_timer == 2) { initialPositionRobot_timer = 8; dataGridView1.Rows[Y_timer].Cells[X_timer].Value = "▼"; break; }
+                    if (initialPositionRobot_timer == 4) { initialPositionRobot_timer = 6; dataGridView1.Rows[Y_timer].Cells[X_timer].Value = "►"; break; }
+                    if (initialPositionRobot_timer == 6) { initialPositionRobot_timer = 4; dataGridView1.Rows[Y_timer].Cells[X_timer].Value = "◄"; break; }
+                    if (initialPositionRobot_timer == 8) { initialPositionRobot_timer = 2; dataGridView1.Rows[Y_timer].Cells[X_timer].Value = "▲"; break; }
                 }
-                if (initialPositionRobot_timer == 8)//▼
-                {
-                    if (robotRoute[buf_timerPlus] == 2) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "▼"; initialPositionRobot_timer = 8; break; }
-                    if (robotRoute[buf_timerPlus] == 4) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "►"; initialPositionRobot_timer = 6; break; }
-                    if (robotRoute[buf_timerPlus] == 6) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "◄"; initialPositionRobot_timer = 4; break; }
-                    if (robotRoute[buf_timerPlus] == 0) { dataGridView1.Rows[routeOfMovement_y[buf_timer - 1]].Cells[routeOfMovement_x[buf_timer - 1]].Value = "▲"; initialPositionRobot_timer = 2; break; }
-                }
-
             }
-            dataGridView1.Rows[routeOfMovement_y[buf_timer-1]].Cells[routeOfMovement_x[buf_timer-1]].Style.BackColor = Color.Red;
-         
+            dataGridView1.Rows[Y_timer].Cells[X_timer].Style.BackColor = Color.Red;
+           // previousValue_timer = Convert.ToInt32();
+            if (robotRoute[buf_timerPlus] == 2)
+            {
+                if (initialPositionRobot_timer == 2) { Y_timer--; }
+                if (initialPositionRobot_timer == 4) { X_timer--; }
+                if (initialPositionRobot_timer == 6) { X_timer++; }
+                if (initialPositionRobot_timer == 8) { Y_timer++; }
 
-            buf_timer--;
+                if (initialPositionRobot_timer == 2) { dataGridView1.Rows[Y_timer].Cells[X_timer].Value = "▲"; }
+                if (initialPositionRobot_timer == 4) { dataGridView1.Rows[Y_timer].Cells[X_timer].Value = "◄"; }
+                if (initialPositionRobot_timer == 6) { dataGridView1.Rows[Y_timer].Cells[X_timer].Value = "►"; }
+                if (initialPositionRobot_timer == 8) { dataGridView1.Rows[Y_timer].Cells[X_timer].Value = "▼"; }
+                dataGridView1.Rows[Y_timer].Cells[X_timer].Style.BackColor = Color.Red;
+            }
             buf_timerPlus++;
-            if (buf_timer == 0) { timer1.Enabled = false; }
-         
+            if (buf_timerPlus >= robotRoute.Count) { timer1.Enabled = false; MessageBox.Show("!!!!!!!!"); }        
         }
-
         private void sendWayRobot_Click(object sender, EventArgs e)
         {
             timer1.Enabled = true;
